@@ -1,0 +1,7 @@
+[
+  {"keyword": "brake pad replacement cost Toronto", "volume": 2400, "kd": 32, "cpc": 2.5, "intent": "commercial", "city": "Toronto", "car": "sedan", "difficulty": "medium"},
+  {"keyword": "best brake pads for toyota corolla", "volume": 1300, "kd": 28, "cpc": 1.8, "intent": "transactional", "car": "Toyota Corolla", "difficulty": "low"},
+  {"keyword": "engine misfire causes", "volume": 5000, "kd": 45, "cpc": 3.2, "intent": "informational", "difficulty": "high"},
+  {"keyword": "transmission fluid change cost Canada", "volume": 800, "kd": 25, "cpc": 1.5, "intent": "commercial", "city": "Toronto", "difficulty": "low"},
+  {"keyword": "subaru outback suspension problems", "volume": 900, "kd": 30, "cpc": 1.2, "intent": "informational", "car": "Subaru Outback", "difficulty": "medium"}
+]
