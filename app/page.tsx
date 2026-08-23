@@ -3,8 +3,8 @@ import { getPosts, getSettings } from '@/lib/api';
 import AdSlot from '@/components/AdSlot';
 
 export default async function HomePage() {
-  const posts = await getPosts({ status: 'published' }).catch(() => []);
-  const settings = await getSettings().catch(() => ({ siteName: "Mike's Auto Garage" }));
+  const posts: any[] = await getPosts({ status: 'published' }).catch(() => []);
+  const settings: any = await getSettings().catch(() => ({ siteName: "Mike's Auto Garage" }));
 
   const latest = posts.slice(0, 8);
   const categories = ['Brakes', 'Suspension', 'Engine', 'Transmission', 'Electrical', 'Tires'];
@@ -28,7 +28,7 @@ export default async function HomePage() {
       <section className="mt-12">
         <h2 className="text-2xl font-bold mb-6">Top Categories</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {categories.map(cat => (
+          {categories.map((cat: string) => (
             <Link key={cat} href={`/category/${cat.toLowerCase()}`} className="p-4 bg-white border rounded-lg text-center hover:border-primary transition-colors">
               {cat}
             </Link>
@@ -39,7 +39,7 @@ export default async function HomePage() {
       <section className="mt-12">
         <h2 className="text-2xl font-bold mb-6">Latest From the Garage</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {latest.map(post => (
+          {latest.map((post: any) => (
             <article key={post.slug} className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow">
               <Link href={`/blog/${post.slug}`}>
                 <div className="p-4">
