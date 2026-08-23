@@ -4,9 +4,9 @@ const nextConfig = {
     remotePatterns: [{ hostname: '*' }],
     formats: ['image/webp']
   },
-  revalidate: 86400,
   experimental: {
     optimizePackageImports: ['lucide-react']
   }
 };
+
 export default nextConfig;
