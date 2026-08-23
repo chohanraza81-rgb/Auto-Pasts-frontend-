@@ -6,4 +6,4 @@ export default function PrivacyPage() {
       {/* Add full privacy policy content */}
     </main>
   );
-}.
+}
