@@ -18,7 +18,6 @@ async function forward(req: NextRequest, { params }: { params: { path: string[] 
       headers,
       body,
     });
-
     const data = await res.text();
     return new NextResponse(data, {
       status: res.status,
