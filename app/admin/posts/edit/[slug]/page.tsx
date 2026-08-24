@@ -38,9 +38,14 @@ export default function EditPostPage() {
 
   useEffect(() => {
     const loadPostAndCategories = async () => {
+      if (!slug) {
+        setError('No slug provided');
+        setLoading(false);
+        return;
+      }
       try {
         const [post, cats] = await Promise.all([
-          fetchAPI(`/posts/${slug}`),
+          fetchAPI(`/posts/${encodeURIComponent(slug)}`),
           fetchAPI('/categories'),
         ]);
         setForm({
@@ -53,7 +58,7 @@ export default function EditPostPage() {
           featuredImage: post.featuredImage || '',
           featuredImageAlt: post.featuredImageAlt || '',
           category: post.category,
-          tags: post.tags.join(', '),
+          tags: Array.isArray(post.tags) ? post.tags.join(', ') : '',
           status: post.status,
           content: post.content,
           author: post.author || 'Mike Johnson',
@@ -66,7 +71,7 @@ export default function EditPostPage() {
         setLoading(false);
       }
     };
-    if (slug) loadPostAndCategories();
+    loadPostAndCategories();
   }, [slug]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -160,7 +165,6 @@ export default function EditPostPage() {
   };
 
   if (loading) return <div>Loading...</div>;
-  if (error && !form.id) return <div className="text-red-600">{error}</div>;
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -237,7 +241,7 @@ export default function EditPostPage() {
           />
         </div>
 
-        {/* Image insertion inputs */}
+        {/* Image URL inputs */}
         <div className="bg-white p-4 rounded-lg shadow-sm">
           <h3 className="font-semibold mb-2">Insert Image</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
