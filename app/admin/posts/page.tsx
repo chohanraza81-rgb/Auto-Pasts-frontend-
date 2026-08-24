@@ -16,10 +16,12 @@ export default function AdminPosts() {
   if (loading) return <div>Loading...</div>;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div>
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Posts</h1>
-        <Link href="/admin/ai-writer" className="bg-primary text-white px-4 py-2 rounded">New Post</Link>
+        <Link href="/admin/posts/new" className="bg-primary text-white px-4 py-2 rounded">
+          + Add New Post
+        </Link>
       </div>
       <table className="w-full mt-6 border-collapse">
         <thead>
@@ -37,10 +39,13 @@ export default function AdminPosts() {
               <td className="p-2">{post.status}</td>
               <td className="p-2">{post.viewCount}</td>
               <td className="p-2">
-                <Link href={`/admin/posts/${post.id}`} className="text-primary">Edit</Link>
+                <Link href={`/admin/posts/edit/${post.id}`} className="text-primary">Edit</Link>
               </td>
             </tr>
           ))}
+          {posts.length === 0 && (
+            <tr><td colSpan={4} className="p-4 text-center text-gray-500">No posts yet. Add your first one!</td></tr>
+          )}
         </tbody>
       </table>
     </div>
