@@ -1,19 +1,29 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { fetchAPI } from '@/lib/api';
 
 export default function AdminPosts() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/posts?status=all`)
-      .then(res => res.json())
-      .then(data => { setPosts(data); setLoading(false); })
-      .catch(() => setLoading(false));
+    const loadPosts = async () => {
+      try {
+        const data = await fetchAPI('/posts?status=all');
+        setPosts(data);
+      } catch (err) {
+        setError('Failed to load posts');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadPosts();
   }, []);
 
   if (loading) return <div>Loading...</div>;
+  if (error) return <div className="text-red-600">{error}</div>;
 
   return (
     <div>
