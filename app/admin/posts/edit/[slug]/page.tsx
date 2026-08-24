@@ -4,6 +4,44 @@ import { useRouter, useParams } from 'next/navigation';
 import { fetchAPI } from '@/lib/api';
 import { Bold, Italic, Heading2, Image as ImageIcon, List, Link as LinkIcon, Save, X, Eye } from 'lucide-react';
 
+function autoFormatContent(text: string): string {
+  if (!text) return '';
+  if (/<[a-z][\s\S]*>/i.test(text)) return text;
+
+  const blocks = text.split(/\n\s*\n/);
+  let html = '';
+
+  blocks.forEach(block => {
+    const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length === 0) return;
+
+    const blockText = lines.join(' ');
+    if (
+      blockText.length < 80 &&
+      (blockText === blockText.toUpperCase() || /^(FAQ|Q:|Method \d|Rule of Thumb|Final Verdict|Where I Buy Parts|The Real Cost|RockAuto vs|Step-by-Step)/i.test(blockText))
+    ) {
+      html += `<h2>${blockText}</h2>`;
+      return;
+    }
+
+    if (lines.length > 1 && /^\d+\.\s+.+/.test(lines[0]) && lines[0].length < 80) {
+      html += `<h3>${lines[0]}</h3>`;
+      lines.shift();
+    }
+
+    const content = lines.join('<br>');
+    if (content.includes('<br>- ') || content.includes('<br>* ')) {
+      const items = content.split('<br>').filter(item => item.trim().startsWith('-') || item.trim().startsWith('*'));
+      const listItems = items.map(item => `<li>${item.replace(/^[-*]\s*/, '')}</li>`).join('');
+      html += `<ul>${listItems}</ul>`;
+    } else {
+      html += `<p>${content}</p>`;
+    }
+  });
+
+  return html;
+}
+
 export default function EditPostPage() {
   const router = useRouter();
   const params = useParams();
@@ -19,6 +57,10 @@ export default function EditPostPage() {
     metaDesc: '',
     featuredImage: '',
     featuredImageAlt: '',
+    middleImage: '',
+    middleImageAlt: '',
+    finalImage: '',
+    finalImageAlt: '',
     category: '',
     tags: '',
     status: 'draft',
@@ -35,6 +77,7 @@ export default function EditPostPage() {
   const [imageWidth, setImageWidth] = useState('');
   const [imageHeight, setImageHeight] = useState('');
   const [loading, setLoading] = useState(true);
+  const [autoFormatMsg, setAutoFormatMsg] = useState('');
 
   useEffect(() => {
     const loadPostAndCategories = async () => {
@@ -57,6 +100,10 @@ export default function EditPostPage() {
           metaDesc: post.metaDesc,
           featuredImage: post.featuredImage || '',
           featuredImageAlt: post.featuredImageAlt || '',
+          middleImage: post.middleImage || '',
+          middleImageAlt: post.middleImageAlt || '',
+          finalImage: post.finalImage || '',
+          finalImageAlt: post.finalImageAlt || '',
           category: post.category,
           tags: Array.isArray(post.tags) ? post.tags.join(', ') : '',
           status: post.status,
@@ -76,6 +123,21 @@ export default function EditPostPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text/plain');
+    const formatted = autoFormatContent(pastedText);
+    const textarea = contentRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newContent = form.content.substring(0, start) + formatted + form.content.substring(end);
+      setForm({ ...form, content: newContent });
+      setAutoFormatMsg('Auto-formatted! Check the content.');
+      setTimeout(() => setAutoFormatMsg(''), 3000);
+    }
   };
 
   const insertTag = (tag: string, placeholder: string = '') => {
@@ -180,21 +242,14 @@ export default function EditPostPage() {
       </div>
 
       {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
+      {autoFormatMsg && <div className="bg-green-100 text-green-700 p-2 rounded mb-2">{autoFormatMsg}</div>}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Slug and Status */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white p-4 rounded-lg shadow-sm">
             <label className="block text-sm font-medium mb-1">Slug *</label>
-            <input
-              type="text"
-              name="slug"
-              required
-              value={form.slug}
-              onChange={handleChange}
-              className="w-full border p-2 rounded"
-              placeholder="post-slug"
-            />
+            <input type="text" name="slug" required value={form.slug} onChange={handleChange} className="w-full border p-2 rounded" />
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm">
             <label className="block text-sm font-medium mb-1">Status</label>
@@ -207,15 +262,7 @@ export default function EditPostPage() {
 
         {/* Title */}
         <div className="bg-white p-4 rounded-lg shadow-sm">
-          <input
-            type="text"
-            name="title"
-            required
-            value={form.title}
-            onChange={handleChange}
-            className="w-full text-2xl font-bold border-0 focus:ring-0 outline-none"
-            placeholder="Post Title"
-          />
+          <input type="text" name="title" required value={form.title} onChange={handleChange} className="w-full text-2xl font-bold border-0 focus:ring-0 outline-none" placeholder="Post Title" />
         </div>
 
         {/* Editor */}
@@ -228,19 +275,10 @@ export default function EditPostPage() {
             <button type="button" onClick={insertImageToContent} className="p-1 hover:bg-gray-200 rounded"><ImageIcon size={16} /></button>
             <button type="button" onClick={insertLink} className="p-1 hover:bg-gray-200 rounded"><LinkIcon size={16} /></button>
           </div>
-          <textarea
-            ref={contentRef}
-            name="content"
-            required
-            value={form.content}
-            onChange={handleChange}
-            rows={20}
-            className="w-full p-4 font-mono text-sm outline-none resize-y"
-            placeholder="Write your article..."
-          />
+          <textarea ref={contentRef} name="content" required value={form.content} onChange={handleChange} onPaste={handlePaste} rows={20} className="w-full p-4 font-mono text-sm outline-none resize-y" placeholder="Write your article..." />
         </div>
 
-        {/* Image insertion inputs */}
+        {/* Image URL inputs */}
         <div className="bg-white p-4 rounded-lg shadow-sm">
           <h3 className="font-semibold mb-2">Insert Image</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -250,6 +288,37 @@ export default function EditPostPage() {
             <div className="flex gap-2">
               <input type="text" placeholder="Width" value={imageWidth} onChange={e => setImageWidth(e.target.value)} className="border p-2 rounded w-full" />
               <input type="text" placeholder="Height" value={imageHeight} onChange={e => setImageHeight(e.target.value)} className="border p-2 rounded w-full" />
+            </div>
+          </div>
+        </div>
+
+        {/* Post Images (Main, Middle, Final) */}
+        <div className="bg-white p-4 rounded-lg shadow-sm space-y-3">
+          <h3 className="font-semibold">Post Images (SEO Optimized)</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium">Main Image URL</label>
+              <input type="text" name="featuredImage" value={form.featuredImage} onChange={handleChange} className="w-full border p-2 rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">Main Image Alt Text</label>
+              <input type="text" name="featuredImageAlt" value={form.featuredImageAlt} onChange={handleChange} className="w-full border p-2 rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">Middle Image URL</label>
+              <input type="text" name="middleImage" value={form.middleImage} onChange={handleChange} className="w-full border p-2 rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">Middle Image Alt Text</label>
+              <input type="text" name="middleImageAlt" value={form.middleImageAlt} onChange={handleChange} className="w-full border p-2 rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">Final Image URL</label>
+              <input type="text" name="finalImage" value={form.finalImage} onChange={handleChange} className="w-full border p-2 rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">Final Image Alt Text</label>
+              <input type="text" name="finalImageAlt" value={form.finalImageAlt} onChange={handleChange} className="w-full border p-2 rounded" />
             </div>
           </div>
         </div>
@@ -267,12 +336,7 @@ export default function EditPostPage() {
             <label className="block text-sm font-medium">Tags (comma separated)</label>
             <input type="text" name="tags" value={form.tags} onChange={handleChange} className="w-full border p-2 rounded" />
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm space-y-3">
-            <label className="block text-sm font-medium">Featured Image URL</label>
-            <input type="text" name="featuredImage" value={form.featuredImage} onChange={handleChange} className="w-full border p-2 rounded" />
-            <label className="block text-sm font-medium">Featured Image Alt Text</label>
-            <input type="text" name="featuredImageAlt" value={form.featuredImageAlt} onChange={handleChange} className="w-full border p-2 rounded" />
-          </div>
+          {/* Removed duplicate featured image fields */}
         </div>
 
         {/* SEO */}
