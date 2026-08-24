@@ -3,67 +3,32 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetchAPI } from '@/lib/api';
 import { Bold, Italic, Heading2, Image as ImageIcon, List, Link as LinkIcon, Save, X, Eye } from 'lucide-react';
+import { autoFormatContent } from '@/lib/formatContent';
 
-function autoFormatContent(text: string): string {
-  if (!text) return '';
-  if (/<[a-z][\s\S]*>/i.test(text)) return text;
-
-  const blocks = text.split(/\n\s*\n/);
-  let html = '';
-
-  blocks.forEach(block => {
-    const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
-    if (lines.length === 0) return;
-
-    const blockText = lines.join(' ');
-    if (
-      blockText.length < 80 &&
-      (blockText === blockText.toUpperCase() || /^(FAQ|Q:|Method \d|Rule of Thumb|Final Verdict|Where I Buy Parts|The Real Cost|RockAuto vs|Step-by-Step)/i.test(blockText))
-    ) {
-      html += `<h2>${blockText}</h2>`;
-      return;
-    }
-
-    if (lines.length > 1 && /^\d+\.\s+.+/.test(lines[0]) && lines[0].length < 80) {
-      html += `<h3>${lines[0]}</h3>`;
-      lines.shift();
-    }
-
-    const content = lines.join('<br>');
-    if (content.includes('<br>- ') || content.includes('<br>* ')) {
-      const items = content.split('<br>').filter(item => item.trim().startsWith('-') || item.trim().startsWith('*'));
-      const listItems = items.map(item => `<li>${item.replace(/^[-*]\s*/, '')}</li>`).join('');
-      html += `<ul>${listItems}</ul>`;
-    } else {
-      html += `<p>${content}</p>`;
-    }
-  });
-
-  return html;
-}
+const initialForm = {
+  slug: '',
+  title: '',
+  excerpt: '',
+  metaTitle: '',
+  metaDesc: '',
+  featuredImage: '',
+  featuredImageAlt: '',
+  middleImage: '',
+  middleImageAlt: '',
+  finalImage: '',
+  finalImageAlt: '',
+  category: '',
+  tags: '',
+  status: 'draft',
+  content: '',
+  author: 'Mike Johnson',
+  schemaJson: '',
+};
 
 export default function NewPostPage() {
   const router = useRouter();
   const contentRef = useRef<HTMLTextAreaElement>(null);
-  const [form, setForm] = useState({
-    slug: '',
-    title: '',
-    excerpt: '',
-    metaTitle: '',
-    metaDesc: '',
-    featuredImage: '',
-    featuredImageAlt: '',
-    middleImage: '',
-    middleImageAlt: '',
-    finalImage: '',
-    finalImageAlt: '',
-    category: '',
-    tags: '',
-    status: 'draft',
-    content: '',
-    author: 'Mike Johnson',
-    schemaJson: '',
-  });
+  const [form, setForm] = useState(initialForm);
   const [categories, setCategories] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -167,8 +132,10 @@ export default function NewPostPage() {
     setSaving(true);
     setError('');
     try {
+      const formattedContent = autoFormatContent(form.content);
       const payload = {
         ...form,
+        content: formattedContent,
         tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
         publishedAt: form.status === 'published' ? new Date().toISOString() : null,
         schemaJson: form.schemaJson || null,
@@ -177,6 +144,8 @@ export default function NewPostPage() {
         method: 'POST',
         body: JSON.stringify(payload),
       });
+      // Reset form to initial state
+      setForm(initialForm);
       router.push('/admin/posts');
     } catch (err: any) {
       setError(err.message || 'Failed to save');
@@ -261,7 +230,7 @@ export default function NewPostPage() {
           />
         </div>
 
-        {/* Image URL inputs */}
+        {/* Image insertion */}
         <div className="bg-white p-4 rounded-lg shadow-sm">
           <h3 className="font-semibold mb-2">Insert Image</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -275,7 +244,7 @@ export default function NewPostPage() {
           </div>
         </div>
 
-        {/* Post Images (Main, Middle, Final) */}
+        {/* Post Images */}
         <div className="bg-white p-4 rounded-lg shadow-sm space-y-3">
           <h3 className="font-semibold">Post Images (SEO Optimized)</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -318,9 +287,6 @@ export default function NewPostPage() {
             </select>
             <label className="block text-sm font-medium">Tags (comma separated)</label>
             <input type="text" name="tags" value={form.tags} onChange={handleChange} className="w-full border p-2 rounded" />
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm space-y-3">
-            {/* Featured image already in Post Images, but also keep original featured image field for backward compatibility? We can remove or keep. To avoid duplicate, we'll keep only new section, but also keep original featuredImage and featuredImageAlt for compatibility. Actually we already included them in the new section. So we can remove the original featuredImage fields from details section to avoid confusion. */}
           </div>
         </div>
 
