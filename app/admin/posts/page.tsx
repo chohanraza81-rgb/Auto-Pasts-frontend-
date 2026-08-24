@@ -27,7 +27,6 @@ export default function AdminPosts() {
     if (!confirm(`Are you sure you want to delete "${slug}"?`)) return;
     try {
       await fetchAPI(`/posts/${id}`, { method: 'DELETE' });
-      // Reload posts
       loadPosts();
     } catch (err: any) {
       alert('Failed to delete: ' + err.message);
@@ -84,4 +83,4 @@ export default function AdminPosts() {
       </table>
     </div>
   );
-  }
+}
