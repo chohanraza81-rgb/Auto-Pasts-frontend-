@@ -1,24 +1,31 @@
-import { getPost, getPosts } from '@/lib/api';
-import AuthorBox from '@/components/AuthorBox';
-import TOC from '@/components/TOC';
-import AdSlot from '@/components/AdSlot';
-import Schema from '@/components/Schema';
+export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
+
+import { getServerPost, getServerPosts } from '@/lib/api';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { generateArticleSchema, generateFAQSchema } from '@/lib/seo';
+import AuthorBox from '@/components/AuthorBox';
+import AdSlot from '@/components/AdSlot';
+import Schema from '@/components/Schema';
 
 export default async function BlogPostPage({ params }: { params: { slug: string } }) {
-  const post = await getPost(params.slug).catch(() => null);
-  if (!post) notFound();
+  const post = await getServerPost(params.slug).catch(() => null);
+  if (!post) {
+    notFound();
+  }
 
-  const related = await getPosts({ category: post.category }).catch(() => []);
+  const related = await getServerPosts({ category: post.category, status: 'published' }).catch(() => []);
   const relatedPosts = related.filter((p: any) => p.slug !== post.slug).slice(0, 8);
 
-  const articleSchema = generateArticleSchema(post);
-  // Basic FAQ extraction from post content (in production you'd parse headings)
-  const faqSchema = generateFAQSchema([
-    { question: 'How often should I replace brake pads?', answer: 'Every 40,000-60,000 km depending on driving.' }
-  ]);
+  const articleSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: post.title,
+    description: post.metaDesc,
+    author: { '@type': 'Person', name: post.author || 'Mike Johnson' },
+    datePublished: post.publishedAt,
+    image: post.featuredImage || undefined,
+  };
 
   return (
     <main className="max-w-7xl mx-auto px-4 py-8 grid lg:grid-cols-[1fr_320px] gap-8">
@@ -26,17 +33,19 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
         <h1 className="text-4xl font-bold">{post.title}</h1>
         <AuthorBox />
         <AdSlot position="header" />
-        <TOC content={post.content} />
-        <div className="prose prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: post.content }} />
+        <div
+          className="prose prose-lg max-w-none mt-6"
+          dangerouslySetInnerHTML={{ __html: post.content }}
+        />
         <AdSlot position="in-article" />
         <div className="mt-8">
           <h2 className="text-2xl font-bold mb-4">Where I Buy Parts</h2>
           <p>Check out my trusted suppliers:</p>
-          {/* Affiliate links go here */}
+          {/* Affiliate links will go here */}
         </div>
         <Schema data={articleSchema} />
-        <Schema data={faqSchema} />
       </article>
+
       <aside>
         <AdSlot position="sidebar" />
         <h3 className="font-semibold mt-6">Related Posts</h3>
@@ -46,6 +55,9 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
               {p.title}
             </Link>
           ))}
+          {relatedPosts.length === 0 && (
+            <p className="text-gray-500">No related posts.</p>
+          )}
         </div>
         <AdSlot position="sidebar" />
       </aside>
