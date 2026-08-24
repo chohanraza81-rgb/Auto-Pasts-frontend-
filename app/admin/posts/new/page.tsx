@@ -1,9 +1,12 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Image from '@tiptap/extension-image';
+import Link from '@tiptap/extension-link';
 import { fetchAPI } from '@/lib/api';
-import { Bold, Italic, Heading2, Image as ImageIcon, List, Link as LinkIcon, Save, X, Eye } from 'lucide-react';
-import { autoFormatContent } from '@/lib/formatContent';
+import { Bold, Italic, Heading2, Heading3, List, ListOrdered, Link as LinkIcon, Image as ImageIcon, Quote, Save, X, Eye } from 'lucide-react';
 
 const initialForm = {
   slug: '',
@@ -13,10 +16,6 @@ const initialForm = {
   metaDesc: '',
   featuredImage: '',
   featuredImageAlt: '',
-  middleImage: '',
-  middleImageAlt: '',
-  finalImage: '',
-  finalImageAlt: '',
   category: '',
   tags: '',
   status: 'draft',
@@ -27,17 +26,26 @@ const initialForm = {
 
 export default function NewPostPage() {
   const router = useRouter();
-  const contentRef = useRef<HTMLTextAreaElement>(null);
   const [form, setForm] = useState(initialForm);
   const [categories, setCategories] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [imageAlt, setImageAlt] = useState('');
-  const [imageTitle, setImageTitle] = useState('');
-  const [imageWidth, setImageWidth] = useState('');
-  const [imageHeight, setImageHeight] = useState('');
-  const [autoFormatMsg, setAutoFormatMsg] = useState('');
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Image,
+      Link.configure({ openOnClick: false }),
+    ],
+    content: '',
+    editorProps: {
+      attributes: {
+        class: 'prose prose-lg max-w-none focus:outline-none min-h-[500px] px-4 py-3',
+      },
+    },
+  });
 
   useEffect(() => {
     fetchAPI('/categories')
@@ -49,61 +57,26 @@ export default function NewPostPage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-    const pastedText = e.clipboardData.getData('text/plain');
-    const formatted = autoFormatContent(pastedText);
-    const textarea = contentRef.current;
-    if (textarea) {
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const newContent = form.content.substring(0, start) + formatted + form.content.substring(end);
-      setForm({ ...form, content: newContent });
-      setAutoFormatMsg('Auto-formatted! Check the content.');
-      setTimeout(() => setAutoFormatMsg(''), 3000);
-    }
-  };
-
-  const insertTag = (tag: string, placeholder: string = '') => {
-    const textarea = contentRef.current;
-    if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selected = form.content.substring(start, end) || placeholder;
-    const newContent = form.content.substring(0, start) + tag + selected + form.content.substring(end);
-    setForm({ ...form, content: newContent });
-    textarea.focus();
-  };
-
-  const insertImageToContent = () => {
+  const insertImage = () => {
     if (!imageUrl) {
       alert('Please enter an image URL');
       return;
     }
-    const alt = imageAlt || 'auto parts image';
-    const title = imageTitle || alt;
-    const widthAttr = imageWidth ? ` width="${imageWidth}"` : '';
-    const heightAttr = imageHeight ? ` height="${imageHeight}"` : '';
-    const imgTag = `<img src="${imageUrl}" alt="${alt}" title="${title}" loading="lazy"${widthAttr}${heightAttr} />`;
-    insertTag(imgTag, '');
+    const alt = imageAlt || 'image';
+    editor?.chain().focus().setImage({ src: imageUrl, alt }).run();
     setImageUrl('');
     setImageAlt('');
-    setImageTitle('');
-    setImageWidth('');
-    setImageHeight('');
   };
 
-  const insertLink = () => {
-    const url = prompt('Enter URL (e.g., https://partsavatar.ca)');
-    const text = prompt('Link text', 'Buy Here');
-    if (url && text) {
-      const linkTag = `<a href="${url}" target="_blank" rel="nofollow">${text}</a>`;
-      insertTag(linkTag, '');
+  const setLink = () => {
+    const url = prompt('Enter URL');
+    if (url) {
+      editor?.chain().focus().setLink({ href: url, target: '_blank', rel: 'nofollow' }).run();
     }
   };
 
   const openPreview = () => {
-    if (!form.slug || !form.title || !form.content) {
+    if (!form.slug || !form.title || !editor?.getHTML()) {
       alert('Slug, Title, and Content are required for preview.');
       return;
     }
@@ -111,11 +84,20 @@ export default function NewPostPage() {
     if (previewWindow) {
       previewWindow.document.write(`
         <html>
-          <head><title>${form.title}</title></head>
+          <head><title>${form.title}</title>
+          <style>
+            body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+            img { max-width: 100%; height: auto; border-radius: 8px; margin: 1rem 0; }
+            h2 { font-size: 1.8em; margin-top: 2rem; }
+            h3 { font-size: 1.4em; margin-top: 1.5rem; }
+            p { line-height: 1.7; }
+            ul, ol { padding-left: 1.5rem; }
+          </style>
+          </head>
           <body>
             <h1>${form.title}</h1>
             <p><em>By ${form.author}</em></p>
-            <div>${form.content}</div>
+            ${editor.getHTML()}
           </body>
         </html>
       `);
@@ -125,17 +107,17 @@ export default function NewPostPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.slug || !form.title || !form.excerpt || !form.metaTitle || !form.metaDesc || !form.category || !form.content) {
+    const contentHtml = editor?.getHTML() || '';
+    if (!form.slug || !form.title || !form.excerpt || !form.metaTitle || !form.metaDesc || !form.category || !contentHtml) {
       setError('Please fill all required fields: Slug, Title, Excerpt, Meta Title, Meta Description, Category, Content');
       return;
     }
     setSaving(true);
     setError('');
     try {
-      const formattedContent = autoFormatContent(form.content);
       const payload = {
         ...form,
-        content: formattedContent,
+        content: contentHtml,
         tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
         publishedAt: form.status === 'published' ? new Date().toISOString() : null,
         schemaJson: form.schemaJson || null,
@@ -144,8 +126,8 @@ export default function NewPostPage() {
         method: 'POST',
         body: JSON.stringify(payload),
       });
-      // Reset form to initial state
       setForm(initialForm);
+      editor?.commands.clearContent();
       router.push('/admin/posts');
     } catch (err: any) {
       setError(err.message || 'Failed to save');
@@ -168,10 +150,8 @@ export default function NewPostPage() {
       </div>
 
       {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
-      {autoFormatMsg && <div className="bg-green-100 text-green-700 p-2 rounded mb-2">{autoFormatMsg}</div>}
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Slug and Status */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white p-4 rounded-lg shadow-sm">
             <label className="block text-sm font-medium mb-1">Slug *</label>
@@ -194,7 +174,6 @@ export default function NewPostPage() {
           </div>
         </div>
 
-        {/* Title */}
         <div className="bg-white p-4 rounded-lg shadow-sm">
           <input
             type="text"
@@ -207,72 +186,42 @@ export default function NewPostPage() {
           />
         </div>
 
-        {/* Editor */}
+        {/* Rich Text Editor */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2 border-b bg-gray-50 flex-wrap">
-            <button type="button" onClick={() => insertTag('<strong>', 'bold text')} className="p-1 hover:bg-gray-200 rounded"><Bold size={16} /></button>
-            <button type="button" onClick={() => insertTag('<em>', 'italic text')} className="p-1 hover:bg-gray-200 rounded"><Italic size={16} /></button>
-            <button type="button" onClick={() => insertTag('<h2>', 'Heading')} className="p-1 hover:bg-gray-200 rounded"><Heading2 size={16} /></button>
-            <button type="button" onClick={() => insertTag('<ul><li>', 'List item')} className="p-1 hover:bg-gray-200 rounded"><List size={16} /></button>
-            <button type="button" onClick={insertImageToContent} className="p-1 hover:bg-gray-200 rounded"><ImageIcon size={16} /></button>
-            <button type="button" onClick={insertLink} className="p-1 hover:bg-gray-200 rounded"><LinkIcon size={16} /></button>
+            <button type="button" onClick={() => editor?.chain().focus().toggleBold().run()} className="p-1 hover:bg-gray-200 rounded"><Bold size={16} /></button>
+            <button type="button" onClick={() => editor?.chain().focus().toggleItalic().run()} className="p-1 hover:bg-gray-200 rounded"><Italic size={16} /></button>
+            <button type="button" onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} className="p-1 hover:bg-gray-200 rounded"><Heading2 size={16} /></button>
+            <button type="button" onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()} className="p-1 hover:bg-gray-200 rounded"><Heading3 size={16} /></button>
+            <button type="button" onClick={() => editor?.chain().focus().toggleBulletList().run()} className="p-1 hover:bg-gray-200 rounded"><List size={16} /></button>
+            <button type="button" onClick={() => editor?.chain().focus().toggleOrderedList().run()} className="p-1 hover:bg-gray-200 rounded"><ListOrdered size={16} /></button>
+            <button type="button" onClick={setLink} className="p-1 hover:bg-gray-200 rounded"><LinkIcon size={16} /></button>
+            <button type="button" onClick={insertImage} className="p-1 hover:bg-gray-200 rounded"><ImageIcon size={16} /></button>
+            <button type="button" onClick={() => editor?.chain().focus().toggleBlockquote().run()} className="p-1 hover:bg-gray-200 rounded"><Quote size={16} /></button>
           </div>
-          <textarea
-            ref={contentRef}
-            name="content"
-            required
-            value={form.content}
-            onChange={handleChange}
-            onPaste={handlePaste}
-            rows={20}
-            className="w-full p-4 font-mono text-sm outline-none resize-y"
-            placeholder="Paste your plain text content here. It will auto-format to HTML with headings, paragraphs, and lists."
-          />
-        </div>
 
-        {/* Image insertion */}
-        <div className="bg-white p-4 rounded-lg shadow-sm">
-          <h3 className="font-semibold mb-2">Insert Image</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <input type="text" placeholder="Image URL" value={imageUrl} onChange={e => setImageUrl(e.target.value)} className="border p-2 rounded" />
-            <input type="text" placeholder="Alt Text (SEO)" value={imageAlt} onChange={e => setImageAlt(e.target.value)} className="border p-2 rounded" />
-            <input type="text" placeholder="Title (optional)" value={imageTitle} onChange={e => setImageTitle(e.target.value)} className="border p-2 rounded" />
-            <div className="flex gap-2">
-              <input type="text" placeholder="Width" value={imageWidth} onChange={e => setImageWidth(e.target.value)} className="border p-2 rounded w-full" />
-              <input type="text" placeholder="Height" value={imageHeight} onChange={e => setImageHeight(e.target.value)} className="border p-2 rounded w-full" />
-            </div>
+          {/* Image insertion inputs */}
+          <div className="flex flex-wrap gap-2 px-3 py-2 bg-gray-50 border-b">
+            <input
+              type="text"
+              placeholder="Image URL"
+              value={imageUrl}
+              onChange={e => setImageUrl(e.target.value)}
+              className="border p-2 rounded flex-1 min-w-[200px]"
+            />
+            <input
+              type="text"
+              placeholder="Alt Text"
+              value={imageAlt}
+              onChange={e => setImageAlt(e.target.value)}
+              className="border p-2 rounded flex-1 min-w-[200px]"
+            />
+            <button type="button" onClick={insertImage} className="bg-primary text-white px-4 py-2 rounded">
+              Insert Image
+            </button>
           </div>
-        </div>
 
-        {/* Post Images */}
-        <div className="bg-white p-4 rounded-lg shadow-sm space-y-3">
-          <h3 className="font-semibold">Post Images (SEO Optimized)</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium">Main Image URL</label>
-              <input type="text" name="featuredImage" value={form.featuredImage} onChange={handleChange} className="w-full border p-2 rounded" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium">Main Image Alt Text</label>
-              <input type="text" name="featuredImageAlt" value={form.featuredImageAlt} onChange={handleChange} className="w-full border p-2 rounded" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium">Middle Image URL</label>
-              <input type="text" name="middleImage" value={form.middleImage} onChange={handleChange} className="w-full border p-2 rounded" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium">Middle Image Alt Text</label>
-              <input type="text" name="middleImageAlt" value={form.middleImageAlt} onChange={handleChange} className="w-full border p-2 rounded" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium">Final Image URL</label>
-              <input type="text" name="finalImage" value={form.finalImage} onChange={handleChange} className="w-full border p-2 rounded" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium">Final Image Alt Text</label>
-              <input type="text" name="finalImageAlt" value={form.finalImageAlt} onChange={handleChange} className="w-full border p-2 rounded" />
-            </div>
-          </div>
+          <EditorContent editor={editor} />
         </div>
 
         {/* Details */}
@@ -287,6 +236,12 @@ export default function NewPostPage() {
             </select>
             <label className="block text-sm font-medium">Tags (comma separated)</label>
             <input type="text" name="tags" value={form.tags} onChange={handleChange} className="w-full border p-2 rounded" />
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm space-y-3">
+            <label className="block text-sm font-medium">Featured Image URL</label>
+            <input type="text" name="featuredImage" value={form.featuredImage} onChange={handleChange} className="w-full border p-2 rounded" />
+            <label className="block text-sm font-medium">Featured Image Alt Text</label>
+            <input type="text" name="featuredImageAlt" value={form.featuredImageAlt} onChange={handleChange} className="w-full border p-2 rounded" />
           </div>
         </div>
 
