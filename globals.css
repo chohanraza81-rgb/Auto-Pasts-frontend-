@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+}
+
+body {
+  @apply bg-white text-gray-900 antialiased;
+}
+
+/* Make all content images responsive */
+img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+/* Optional: style for featured image */
+.featured-image {
+  width: 100%;
+  height: auto;
+}
