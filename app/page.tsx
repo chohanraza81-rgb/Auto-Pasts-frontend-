@@ -6,7 +6,6 @@ import { getServerPosts, getServerSettings } from '@/lib/api';
 import AdSlot from '@/components/AdSlot';
 
 export default async function HomePage() {
-  // Direct server-side fetch for categories (no proxy needed)
   const categoriesRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/categories`, {
     cache: 'no-store',
   }).catch(() => null);
