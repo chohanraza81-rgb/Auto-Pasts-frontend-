@@ -1,13 +1,13 @@
 import Link from 'next/link';
-import { getPosts, getSettings } from '@/lib/api';
+import { getPosts, getSettings, fetchAPI } from '@/lib/api';
 import AdSlot from '@/components/AdSlot';
 
 export default async function HomePage() {
-  const posts: any[] = await getPosts({ status: 'published' }).catch(() => []);
-  const settings: any = await getSettings().catch(() => ({ siteName: "Mike's Auto Garage" }));
+  const posts = await getPosts({ status: 'published' }).catch(() => []);
+  const settings = await getSettings().catch(() => ({ siteName: "Mike's Auto Garage" }));
+  const categories = await fetchAPI('/categories').catch(() => []);
 
   const latest = posts.slice(0, 8);
-  const categories = ['Brakes', 'Suspension', 'Engine', 'Transmission', 'Electrical', 'Tires'];
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -25,16 +25,22 @@ export default async function HomePage() {
 
       <AdSlot position="header" />
 
-      <section className="mt-12">
-        <h2 className="text-2xl font-bold mb-6">Top Categories</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {categories.map((cat: string) => (
-            <Link key={cat} href={`/category/${cat.toLowerCase()}`} className="p-4 bg-white border rounded-lg text-center hover:border-primary transition-colors">
-              {cat}
-            </Link>
-          ))}
-        </div>
-      </section>
+      {categories.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-2xl font-bold mb-6">Top Categories</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {categories.map((cat: any) => (
+              <Link
+                key={cat.id}
+                href={`/category/${cat.slug}`}
+                className="p-4 bg-white border rounded-lg text-center hover:border-primary transition-colors capitalize"
+              >
+                {cat.name}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="mt-12">
         <h2 className="text-2xl font-bold mb-6">Latest From the Garage</h2>
@@ -49,6 +55,9 @@ export default async function HomePage() {
               </Link>
             </article>
           ))}
+          {latest.length === 0 && (
+            <p className="text-gray-500">No published posts yet.</p>
+          )}
         </div>
       </section>
 
