@@ -8,19 +8,31 @@ export default function AdminPosts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const loadPosts = async () => {
+    try {
+      const data = await fetchAPI('/posts?status=all');
+      setPosts(data);
+    } catch (err) {
+      setError('Failed to load posts');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadPosts = async () => {
-      try {
-        const data = await fetchAPI('/posts?status=all');
-        setPosts(data);
-      } catch (err) {
-        setError('Failed to load posts');
-      } finally {
-        setLoading(false);
-      }
-    };
     loadPosts();
   }, []);
+
+  const handleDelete = async (id: string, slug: string) => {
+    if (!confirm(`Are you sure you want to delete "${slug}"?`)) return;
+    try {
+      await fetchAPI(`/posts/${id}`, { method: 'DELETE' });
+      // Reload posts
+      loadPosts();
+    } catch (err: any) {
+      alert('Failed to delete: ' + err.message);
+    }
+  };
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div className="text-red-600">{error}</div>;
@@ -48,13 +60,16 @@ export default function AdminPosts() {
               <td className="p-2">{post.title}</td>
               <td className="p-2">{post.status}</td>
               <td className="p-2">{post.viewCount}</td>
-              <td className="p-2">
-                <Link
-                  href={`/admin/posts/edit/${encodeURIComponent(post.slug)}`}
-                  className="text-primary"
-                >
+              <td className="p-2 flex gap-2">
+                <Link href={`/admin/posts/edit/${encodeURIComponent(post.slug)}`} className="text-primary">
                   Edit
                 </Link>
+                <button
+                  onClick={() => handleDelete(post.id, post.slug)}
+                  className="text-red-600 hover:underline"
+                >
+                  Delete
+                </button>
               </td>
             </tr>
           ))}
@@ -69,4 +84,4 @@ export default function AdminPosts() {
       </table>
     </div>
   );
-}
+  }
