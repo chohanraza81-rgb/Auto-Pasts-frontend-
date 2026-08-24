@@ -152,7 +152,6 @@ export default function EditPostPage() {
         publishedAt: form.status === 'published' ? new Date().toISOString() : null,
         schemaJson: form.schemaJson || null,
       };
-      // Update using the post id
       await fetchAPI(`/posts/${form.id}`, {
         method: 'PUT',
         body: JSON.stringify(payload),
@@ -241,7 +240,7 @@ export default function EditPostPage() {
           />
         </div>
 
-        {/* Image URL inputs */}
+        {/* Image insertion inputs */}
         <div className="bg-white p-4 rounded-lg shadow-sm">
           <h3 className="font-semibold mb-2">Insert Image</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
