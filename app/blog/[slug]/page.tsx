@@ -22,7 +22,7 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
     description: post.metaDesc,
     author: { '@type': 'Person', name: post.author || 'Mike Johnson' },
     datePublished: post.publishedAt,
-    image: post.featuredImage || undefined,
+    image: post.featuredImage || post.middleImage || post.finalImage || undefined,
   };
 
   return (
@@ -33,20 +33,25 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
 
         {post.featuredImage && (
           <div className="mt-6 mb-6">
-            <img
-              src={post.featuredImage}
-              alt={post.featuredImageAlt || post.title}
-              className="w-full h-auto rounded-lg shadow-md"
-              loading="lazy"
-            />
+            <img src={post.featuredImage} alt={post.featuredImageAlt || post.title} className="w-full h-auto rounded-lg shadow-md" loading="lazy" />
           </div>
         )}
 
         <AdSlot position="header" />
-        <div
-          className="prose prose-lg max-w-none mt-6"
-          dangerouslySetInnerHTML={{ __html: post.content }}
-        />
+        <div className="prose prose-lg max-w-none mt-6" dangerouslySetInnerHTML={{ __html: post.content }} />
+
+        {post.middleImage && (
+          <div className="my-6">
+            <img src={post.middleImage} alt={post.middleImageAlt || 'Article image'} className="w-full h-auto rounded-lg shadow-md" loading="lazy" />
+          </div>
+        )}
+
+        {post.finalImage && (
+          <div className="my-6">
+            <img src={post.finalImage} alt={post.finalImageAlt || 'Article image'} className="w-full h-auto rounded-lg shadow-md" loading="lazy" />
+          </div>
+        )}
+
         <AdSlot position="in-article" />
         <div className="mt-8">
           <h2 className="text-2xl font-bold mb-4">Where I Buy Parts</h2>
@@ -61,9 +66,7 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
         <h3 className="font-semibold mt-6">Related Posts</h3>
         <div className="space-y-4 mt-4">
           {relatedPosts.map((p: any) => (
-            <Link key={p.slug} href={`/blog/${p.slug}`} className="block hover:underline">
-              {p.title}
-            </Link>
+            <Link key={p.slug} href={`/blog/${p.slug}`} className="block hover:underline">{p.title}</Link>
           ))}
           {relatedPosts.length === 0 && <p className="text-gray-500">No related posts.</p>}
         </div>
