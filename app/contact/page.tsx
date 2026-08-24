@@ -1,45 +1,71 @@
-import { Router, Request, Response } from 'express';
-import nodemailer from 'nodemailer';
+'use client';
+import { useState } from 'react';
+import { fetchAPI } from '@/lib/api';
 
-const router = Router();
+export default function ContactPage() {
+  const [form, setForm] = useState({ name: '', email: '', message: '' });
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
-router.post('/', async (req: Request, res: Response) => {
-  const { name, email, message } = req.body;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus('sending');
+    try {
+      await fetchAPI('/contact', {
+        method: 'POST',
+        body: JSON.stringify(form),
+      });
+      setStatus('sent');
+      setForm({ name: '', email: '', message: '' });
+    } catch (err) {
+      setStatus('error');
+    }
+  };
 
-  if (!name || !email || !message) {
-    return res.status(400).json({ error: 'Name, email, and message are required' });
-  }
+  return (
+    <main className="max-w-3xl mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold">Contact</h1>
+      <p className="mt-2">Have a question? Drop me a line.</p>
 
-  try {
-    // Configure transporter using environment variables
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+      {status === 'sent' && (
+        <p className="mt-4 text-green-600">Thanks! Your message has been sent.</p>
+      )}
+      {status === 'error' && (
+        <p className="mt-4 text-red-600">Failed to send. Please try again later.</p>
+      )}
 
-    const mailOptions = {
-      from: `"Website Contact" <${process.env.SMTP_USER}>`,
-      to: process.env.CONTACT_EMAIL || process.env.SMTP_USER,
-      replyTo: email,
-      subject: `New Contact Message from ${name}`,
-      text: `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
-      html: `<p><strong>Name:</strong> ${name}</p>
-             <p><strong>Email:</strong> ${email}</p>
-             <p><strong>Message:</strong></p>
-             <p>${message}</p>`,
-    };
-
-    await transporter.sendMail(mailOptions);
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Contact email error:', error);
-    res.status(500).json({ error: 'Failed to send email' });
-  }
-});
-
-export default router;
+      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <input
+          type="text"
+          placeholder="Name"
+          value={form.name}
+          onChange={e => setForm({ ...form, name: e.target.value })}
+          className="w-full border p-2 rounded"
+          required
+        />
+        <input
+          type="email"
+          placeholder="Email"
+          value={form.email}
+          onChange={e => setForm({ ...form, email: e.target.value })}
+          className="w-full border p-2 rounded"
+          required
+        />
+        <textarea
+          placeholder="Message"
+          value={form.message}
+          onChange={e => setForm({ ...form, message: e.target.value })}
+          className="w-full border p-2 rounded"
+          rows={4}
+          required
+        />
+        <button
+          type="submit"
+          disabled={status === 'sending'}
+          className="bg-primary text-white px-6 py-2 rounded disabled:opacity-50"
+        >
+          {status === 'sending' ? 'Sending...' : 'Send'}
+        </button>
+      </form>
+    </main>
+  );
+}
