@@ -7,7 +7,6 @@ import { notFound } from 'next/navigation';
 import AuthorBox from '@/components/AuthorBox';
 import AdSlot from '@/components/AdSlot';
 import Schema from '@/components/Schema';
-import { autoFormatContent } from '@/lib/formatContent';
 
 export default async function BlogPostPage({ params }: { params: { slug: string } }) {
   const post = await getServerPost(params.slug).catch(() => null);
@@ -16,8 +15,6 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
   const related = await getServerPosts({ category: post.category, status: 'published' }).catch(() => []);
   const relatedPosts = related.filter((p: any) => p.slug !== post.slug).slice(0, 8);
 
-  const formattedContent = autoFormatContent(post.content);
-
   const articleSchema = {
     '@context': 'https://schema.org',
     '@type': 'Article',
@@ -25,7 +22,7 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
     description: post.metaDesc,
     author: { '@type': 'Person', name: post.author || 'Mike Johnson' },
     datePublished: post.publishedAt,
-    image: post.featuredImage || post.middleImage || post.finalImage || undefined,
+    image: post.featuredImage || undefined,
   };
 
   return (
@@ -46,36 +43,16 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
         )}
 
         <AdSlot position="header" />
-        <div className="prose prose-lg max-w-none mt-6" dangerouslySetInnerHTML={{ __html: formattedContent }} />
 
-        {post.middleImage && (
-          <div className="my-8">
-            <img
-              src={post.middleImage}
-              alt={post.middleImageAlt || 'Article middle image'}
-              className="w-full h-auto rounded-lg shadow-md"
-              loading="lazy"
-            />
-          </div>
-        )}
-
-        {post.finalImage && (
-          <div className="my-8">
-            <img
-              src={post.finalImage}
-              alt={post.finalImageAlt || 'Article final image'}
-              className="w-full h-auto rounded-lg shadow-md"
-              loading="lazy"
-            />
-          </div>
-        )}
+        {/* Render the rich text content directly */}
+        <div className="prose prose-lg max-w-none mt-6" dangerouslySetInnerHTML={{ __html: post.content }} />
 
         <AdSlot position="in-article" />
 
         <div className="mt-8">
           <h2 className="text-2xl font-bold mb-4">Where I Buy Parts</h2>
           <p>Check out my trusted suppliers:</p>
-          {/* Affiliate links will go here */}
+          {/* Affiliate links go here */}
         </div>
         <Schema data={articleSchema} />
       </article>
