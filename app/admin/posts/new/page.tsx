@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetchAPI } from '@/lib/api';
-import { Bold, Italic, Heading2, Image as ImageIcon, List, Link as LinkIcon, Save, X } from 'lucide-react';
+import { Bold, Italic, Heading2, Image as ImageIcon, List, Link as LinkIcon, Save, X, Eye } from 'lucide-react';
 
 export default function NewPostPage() {
   const router = useRouter();
@@ -79,8 +79,34 @@ export default function NewPostPage() {
     }
   };
 
+  const openPreview = () => {
+    if (!form.slug || !form.title || !form.content) {
+      alert('Slug, Title, and Content are required for preview.');
+      return;
+    }
+    // Open preview in new tab with temporary data (client-side)
+    const previewWindow = window.open('', '_blank');
+    if (previewWindow) {
+      previewWindow.document.write(`
+        <html>
+          <head><title>${form.title}</title></head>
+          <body>
+            <h1>${form.title}</h1>
+            <p><em>By ${form.author}</em></p>
+            <div>${form.content}</div>
+          </body>
+        </html>
+      `);
+      previewWindow.document.close();
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.slug || !form.title || !form.excerpt || !form.metaTitle || !form.metaDesc || !form.category || !form.content) {
+      setError('Please fill all required fields: Slug, Title, Excerpt, Meta Title, Meta Description, Category, Content');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -105,14 +131,42 @@ export default function NewPostPage() {
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Add New Post</h1>
-        <button onClick={() => router.push('/admin/posts')} className="text-gray-500 hover:text-gray-700">
-          <X size={20} />
-        </button>
+        <div className="flex gap-2">
+          <button type="button" onClick={openPreview} className="text-gray-600 hover:text-gray-800 flex items-center gap-1">
+            <Eye size={18} /> Preview
+          </button>
+          <button onClick={() => router.push('/admin/posts')} className="text-gray-500 hover:text-gray-700">
+            <X size={20} />
+          </button>
+        </div>
       </div>
 
       {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
 
       <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Slug and Status */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-white p-4 rounded-lg shadow-sm">
+            <label className="block text-sm font-medium mb-1">Slug *</label>
+            <input
+              type="text"
+              name="slug"
+              required
+              value={form.slug}
+              onChange={handleChange}
+              className="w-full border p-2 rounded"
+              placeholder="rockauto-canada-shipping-guide"
+            />
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm">
+            <label className="block text-sm font-medium mb-1">Status</label>
+            <select name="status" value={form.status} onChange={handleChange} className="w-full border p-2 rounded">
+              <option value="draft">Draft</option>
+              <option value="published">Published</option>
+            </select>
+          </div>
+        </div>
+
         {/* Title */}
         <div className="bg-white p-4 rounded-lg shadow-sm">
           <input
@@ -227,17 +281,12 @@ export default function NewPostPage() {
 
         {/* SEO */}
         <div className="bg-white p-4 rounded-lg shadow-sm space-y-3">
-          <label className="block text-sm font-medium">Excerpt</label>
+          <label className="block text-sm font-medium">Excerpt *</label>
           <textarea name="excerpt" required value={form.excerpt} onChange={handleChange} rows={2} className="w-full border p-2 rounded" />
-          <label className="block text-sm font-medium">Meta Title</label>
-          <input type="text" name="metaTitle" value={form.metaTitle} onChange={handleChange} className="w-full border p-2 rounded" />
-          <label className="block text-sm font-medium">Meta Description</label>
-          <input type="text" name="metaDesc" value={form.metaDesc} onChange={handleChange} className="w-full border p-2 rounded" />
-          <label className="block text-sm font-medium">Status</label>
-          <select name="status" value={form.status} onChange={handleChange} className="w-full border p-2 rounded">
-            <option value="draft">Draft</option>
-            <option value="published">Published</option>
-          </select>
+          <label className="block text-sm font-medium">Meta Title *</label>
+          <input type="text" name="metaTitle" required value={form.metaTitle} onChange={handleChange} className="w-full border p-2 rounded" />
+          <label className="block text-sm font-medium">Meta Description *</label>
+          <input type="text" name="metaDesc" required value={form.metaDesc} onChange={handleChange} className="w-full border p-2 rounded" />
         </div>
 
         <div className="flex justify-end gap-3">
