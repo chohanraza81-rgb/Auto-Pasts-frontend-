@@ -49,12 +49,21 @@ export default function AdminPosts() {
               <td className="p-2">{post.status}</td>
               <td className="p-2">{post.viewCount}</td>
               <td className="p-2">
-                <Link href={`/admin/posts/edit/${post.id}`} className="text-primary">Edit</Link>
+                <Link
+                  href={`/admin/posts/edit/${encodeURIComponent(post.slug)}`}
+                  className="text-primary"
+                >
+                  Edit
+                </Link>
               </td>
             </tr>
           ))}
           {posts.length === 0 && (
-            <tr><td colSpan={4} className="p-4 text-center text-gray-500">No posts yet. Add your first one!</td></tr>
+            <tr>
+              <td colSpan={4} className="p-4 text-center text-gray-500">
+                No posts yet. Add your first one!
+              </td>
+            </tr>
           )}
         </tbody>
       </table>
