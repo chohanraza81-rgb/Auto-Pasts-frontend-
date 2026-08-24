@@ -2,13 +2,18 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 import Link from 'next/link';
-import { getPosts, getSettings, fetchAPI } from '@/lib/api';
+import { getServerPosts, getServerSettings } from '@/lib/api';
 import AdSlot from '@/components/AdSlot';
 
 export default async function HomePage() {
-  const posts = await getPosts({ status: 'published' }).catch(() => []);
-  const settings = await getSettings().catch(() => ({ siteName: "Mike's Auto Garage" }));
-  const categories = await fetchAPI('/categories').catch(() => []);
+  // Direct server-side fetch for categories (no proxy needed)
+  const categoriesRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/categories`, {
+    cache: 'no-store',
+  }).catch(() => null);
+  const categories = categoriesRes ? await categoriesRes.json() : [];
+
+  const posts = await getServerPosts({ status: 'published' }).catch(() => []);
+  const settings = await getServerSettings().catch(() => ({ siteName: "Mike's Auto Garage" }));
 
   const latest = posts.slice(0, 8);
 
