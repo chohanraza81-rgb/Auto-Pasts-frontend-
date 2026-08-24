@@ -2,17 +2,34 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetchAPI } from '@/lib/api';
-import { Bold, Italic, Heading2, Image, List, Save, X } from 'lucide-react';
+import { Bold, Italic, Heading2, Image as ImageIcon, List, Link as LinkIcon, Save, X } from 'lucide-react';
 
 export default function NewPostPage() {
   const router = useRouter();
   const contentRef = useRef<HTMLTextAreaElement>(null);
-  const [form, setForm] = useState({...}); // same as before
+  const [form, setForm] = useState({
+    slug: '',
+    title: '',
+    excerpt: '',
+    metaTitle: '',
+    metaDesc: '',
+    featuredImage: '',
+    featuredImageAlt: '',
+    category: '',
+    tags: '',
+    status: 'draft',
+    content: '',
+    author: 'Mike Johnson',
+    schemaJson: '',
+  });
   const [categories, setCategories] = useState([]);
-  const [imageUrl, setImageUrl] = useState('');
-  // ... other image state
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageAlt, setImageAlt] = useState('');
+  const [imageTitle, setImageTitle] = useState('');
+  const [imageWidth, setImageWidth] = useState('');
+  const [imageHeight, setImageHeight] = useState('');
 
   useEffect(() => {
     fetchAPI('/categories')
@@ -20,19 +37,69 @@ export default function NewPostPage() {
       .catch(() => setCategories([]));
   }, []);
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
   const insertTag = (tag: string, placeholder: string = '') => {
     const textarea = contentRef.current;
     if (!textarea) return;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selected = form.content.substring(start, end) || placeholder;
-    const newTag = `${tag}${selected}${tag.includes('/') ? '' : ''}`;
-    const newContent = form.content.substring(0, start) + newTag + form.content.substring(end);
+    const newContent = form.content.substring(0, start) + tag + selected + form.content.substring(end);
     setForm({ ...form, content: newContent });
     textarea.focus();
   };
 
-  // handleSubmit uses fetchAPI as before
+  const insertImageToContent = () => {
+    if (!imageUrl) {
+      alert('Please enter an image URL');
+      return;
+    }
+    const alt = imageAlt || 'auto parts image';
+    const title = imageTitle || alt;
+    const widthAttr = imageWidth ? ` width="${imageWidth}"` : '';
+    const heightAttr = imageHeight ? ` height="${imageHeight}"` : '';
+    const imgTag = `<img src="${imageUrl}" alt="${alt}" title="${title}" loading="lazy"${widthAttr}${heightAttr} />`;
+    insertTag(imgTag, '');
+    setImageUrl('');
+    setImageAlt('');
+    setImageTitle('');
+    setImageWidth('');
+    setImageHeight('');
+  };
+
+  const insertLink = () => {
+    const url = prompt('Enter URL (e.g., https://partsavatar.ca)');
+    const text = prompt('Link text', 'Buy Here');
+    if (url && text) {
+      const linkTag = `<a href="${url}" target="_blank" rel="nofollow">${text}</a>`;
+      insertTag(linkTag, '');
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    try {
+      const payload = {
+        ...form,
+        tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
+        publishedAt: form.status === 'published' ? new Date().toISOString() : null,
+        schemaJson: form.schemaJson || null,
+      };
+      const data = await fetchAPI('/posts', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      router.push('/admin/posts');
+    } catch (err: any) {
+      setError(err.message || 'Failed to save');
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -42,8 +109,11 @@ export default function NewPostPage() {
           <X size={20} />
         </button>
       </div>
+
       {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
+
       <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Title */}
         <div className="bg-white p-4 rounded-lg shadow-sm">
           <input
             type="text"
@@ -56,14 +126,27 @@ export default function NewPostPage() {
           />
         </div>
 
+        {/* Editor */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          {/* Editor Toolbar */}
-          <div className="flex items-center gap-2 px-3 py-2 border-b bg-gray-50">
-            <button type="button" onClick={() => insertTag('**', 'bold text')} className="p-1 hover:bg-gray-200 rounded"><Bold size={16} /></button>
-            <button type="button" onClick={() => insertTag('*', 'italic text')} className="p-1 hover:bg-gray-200 rounded"><Italic size={16} /></button>
-            <button type="button" onClick={() => insertTag('## ', 'Heading')} className="p-1 hover:bg-gray-200 rounded"><Heading2 size={16} /></button>
-            <button type="button" onClick={() => insertTag('- ', 'List item')} className="p-1 hover:bg-gray-200 rounded"><List size={16} /></button>
-            <button type="button" onClick={() => { /* open image modal or set state */ }} className="p-1 hover:bg-gray-200 rounded"><Image size={16} /></button>
+          <div className="flex items-center gap-2 px-3 py-2 border-b bg-gray-50 flex-wrap">
+            <button type="button" onClick={() => insertTag('<strong>', 'bold text')} className="p-1 hover:bg-gray-200 rounded" title="Bold">
+              <Bold size={16} />
+            </button>
+            <button type="button" onClick={() => insertTag('<em>', 'italic text')} className="p-1 hover:bg-gray-200 rounded" title="Italic">
+              <Italic size={16} />
+            </button>
+            <button type="button" onClick={() => insertTag('<h2>', 'Heading')} className="p-1 hover:bg-gray-200 rounded" title="Heading">
+              <Heading2 size={16} />
+            </button>
+            <button type="button" onClick={() => insertTag('<ul><li>', 'List item')} className="p-1 hover:bg-gray-200 rounded" title="List">
+              <List size={16} />
+            </button>
+            <button type="button" onClick={insertImageToContent} className="p-1 hover:bg-gray-200 rounded" title="Insert Image">
+              <ImageIcon size={16} />
+            </button>
+            <button type="button" onClick={insertLink} className="p-1 hover:bg-gray-200 rounded" title="Insert Link">
+              <LinkIcon size={16} />
+            </button>
           </div>
           <textarea
             ref={contentRef}
@@ -77,32 +160,51 @@ export default function NewPostPage() {
           />
         </div>
 
-        {/* Image Insertion Modal */}
-        {/* ... (simplified: paste URL and insert) */}
+        {/* Image URL inputs */}
         <div className="bg-white p-4 rounded-lg shadow-sm">
           <h3 className="font-semibold mb-2">Insert Image</h3>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input
               type="text"
               placeholder="Image URL"
               value={imageUrl}
               onChange={e => setImageUrl(e.target.value)}
-              className="flex-1 border p-2 rounded"
+              className="border p-2 rounded"
             />
             <input
               type="text"
-              placeholder="Alt text"
+              placeholder="Alt Text (SEO)"
               value={imageAlt}
               onChange={e => setImageAlt(e.target.value)}
-              className="flex-1 border p-2 rounded"
+              className="border p-2 rounded"
             />
-            <button type="button" onClick={insertImageToContent} className="bg-primary text-white px-4 py-2 rounded">
-              Insert
-            </button>
+            <input
+              type="text"
+              placeholder="Title (optional)"
+              value={imageTitle}
+              onChange={e => setImageTitle(e.target.value)}
+              className="border p-2 rounded"
+            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Width"
+                value={imageWidth}
+                onChange={e => setImageWidth(e.target.value)}
+                className="border p-2 rounded w-full"
+              />
+              <input
+                type="text"
+                placeholder="Height"
+                value={imageHeight}
+                onChange={e => setImageHeight(e.target.value)}
+                className="border p-2 rounded w-full"
+              />
+            </div>
           </div>
         </div>
 
-        {/* SEO & Details */}
+        {/* Details */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white p-4 rounded-lg shadow-sm space-y-3">
             <label className="block text-sm font-medium">Category *</label>
@@ -123,6 +225,7 @@ export default function NewPostPage() {
           </div>
         </div>
 
+        {/* SEO */}
         <div className="bg-white p-4 rounded-lg shadow-sm space-y-3">
           <label className="block text-sm font-medium">Excerpt</label>
           <textarea name="excerpt" required value={form.excerpt} onChange={handleChange} rows={2} className="w-full border p-2 rounded" />
