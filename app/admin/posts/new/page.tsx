@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetchAPI } from '@/lib/api';
-import { Bold, Italic, Heading2, Heading3, List, ListOrdered, Link as LinkIcon, Image as ImageIcon, Quote, Save, X, Eye } from 'lucide-react';
+import { Bold, Italic, Heading2, Heading3, List, ListOrdered, Link as LinkIcon, Image as ImageIcon, Save, X, Eye } from 'lucide-react';
 import { autoFormatContent } from '@/lib/formatContent';
 
 const initialForm = {
@@ -55,6 +55,18 @@ export default function NewPostPage() {
       setAutoFormatMsg('Auto-formatted! Check the content.');
       setTimeout(() => setAutoFormatMsg(''), 3000);
     }
+  };
+
+  // Function to insert a tag around selected text or at cursor
+  const insertTag = (tag: string, placeholder: string = '') => {
+    const textarea = contentRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = form.content.substring(start, end) || placeholder;
+    const newContent = form.content.substring(0, start) + tag + selected + form.content.substring(end);
+    setForm({ ...form, content: newContent });
+    textarea.focus();
   };
 
   const insertImageToContent = () => {
@@ -133,7 +145,7 @@ export default function NewPostPage() {
     try {
       const payload = {
         ...form,
-        content: form.content, // already HTML from paste/auto-format
+        content: form.content, // already HTML from paste/auto-format or toolbar
         tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
         publishedAt: form.status === 'published' ? new Date().toISOString() : null,
         schemaJson: form.schemaJson || null,
